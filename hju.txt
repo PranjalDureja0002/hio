@@ -1,0 +1,13 @@
+python scripts/db_profiler.py \
+  --host your-oracle-host \
+  --port 1521 \
+  --service your-service \
+  --user your-user \
+  --password your-pwd \
+  --view VW_SPEND_REPORT_VIEW \
+  --output data_profile.json
+
+
+python scripts/profile_to_knowledge.py \
+  --input data_profile.json \
+  --output-dir ./knowledge_output
