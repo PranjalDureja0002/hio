@@ -130,7 +130,8 @@ class CodeEditorNode(Node):
         IntInput(
             name="max_examples",
             display_name="Max Few-Shot Examples",
-            value=3,
+            value=15,
+            info="More examples = better accuracy but more tokens. Sweet spot: 10-20.",
         ),
         BoolInput(
             name="dedup_subquery",
@@ -149,6 +150,12 @@ class CodeEditorNode(Node):
             display_name="Max Retry Attempts",
             value=2,
             info="Maximum number of retry attempts (1-3).",
+        ),
+        IntInput(
+            name="max_value_hints",
+            display_name="Max Column Value Hints",
+            value=200,
+            info="Max values shown per column in the LLM prompt. Higher = more accurate filters but more tokens.",
         ),
     ]
 
@@ -476,7 +483,18 @@ Return ONLY JSON."""
 
         cvh = filtered["column_value_hints"]
         if cvh:
-            h_lines = [f"  {c} ({h.get('cardinality','?')}): {', '.join(str(v) for v in h.get('examples',[])[:8])}" for c, h in cvh.items() if h.get("examples")]
+            h_lines = []
+            for c, h in cvh.items():
+                examples = h.get("examples", [])
+                if not examples:
+                    continue
+                card = h.get("cardinality", "?")
+                # Show all values for low-cardinality columns, top N for high-cardinality (configurable)
+                mvh = self.max_value_hints
+                limit = len(examples) if (isinstance(card, int) and card <= mvh) else mvh
+                vals = ", ".join(str(v) for v in examples[:limit])
+                tag = " [COMPLETE]" if (isinstance(card, int) and card <= 200 and len(examples) >= card) else ""
+                h_lines.append(f"  {c} ({card}{tag}): {vals}")
             if h_lines:
                 sections.append("\n**Column Values:**\n" + "\n".join(h_lines))
 
